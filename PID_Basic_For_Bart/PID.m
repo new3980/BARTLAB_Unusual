@@ -17,11 +17,11 @@ PID_control_sys = feedback(Kp * sys + (Ki * sys) / s + Kd * sys * s, 1);
 
 % Step response of the closed-loop system without PID control
 figure;
-step(closed_loop_sys);
-hold on;
+step(closed_loop_sys)
+hold on
 
 % Step response of the closed-loop system with PID control
-step(PID_control_sys);
+step(PID_control_sys)
 
 % Ideal step response (staircase)
 time = linspace(0, 10, 1000);
@@ -41,12 +41,19 @@ stepinfo_PID_control = stepinfo(PID_control_sys);
 
 % Display step info
 disp('Step info for the closed-loop system without PID control:');
-disp(stepinfo_closed_loop);
+disp(stepinfo_closed_loop)
 disp('Step info for the closed-loop system with PID control:');
-disp(stepinfo_PID_control);
+disp(stepinfo_PID_control)
 
 % Steady-state error
 [y1,t1] = step(closed_loop_sys);
 [y2,t2] = step(PID_control_sys);
 sserror1 = abs(1-y1(end)/1)*100;
 sserror2 = abs(1-y2(end)/1)*100;
+
+% Display steady-state errors
+disp('Steady-state error for the closed-loop system without PID control:');
+disp(sserror1)
+disp('Steady-state error for the closed-loop system with PID control:');
+disp(sserror2)
+
