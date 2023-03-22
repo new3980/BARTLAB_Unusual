@@ -1,6 +1,6 @@
 % Parameters
-Kp = 5;
-Ki = 1;
+Kp = 8;
+Ki = 4;
 
 % Transfer function
 sys = tf(1, [1 2 1]);

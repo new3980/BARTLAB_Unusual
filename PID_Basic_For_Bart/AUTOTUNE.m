@@ -1,7 +1,7 @@
 % Parameters
-Kp = 8;
-Ki = 4;
-Kd = 3;
+% Kp = 8;
+% Ki = 4;
+% Kd = 3;
 
 % Transfer function
 sys = tf(1, [1 2 1]);
@@ -28,6 +28,7 @@ step(auto_PID_control_sys);
 time = linspace(0, 10, 1000);
 response_ideal = ones(size(time));
 stairs(time, response_ideal, '--k', 'LineWidth', 1.5);
+xlim([0 9])
 
 % Labels and Legends
 xlabel('Time (s)','FontSize',15);
