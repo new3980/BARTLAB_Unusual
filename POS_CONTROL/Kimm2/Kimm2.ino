@@ -36,7 +36,7 @@ void setup() {
  
   Serial.begin(115200); 
   pinMode(encA , INPUT_PULLUP);
-  pinMode(encB , INPUT);
+  pinMode(encB , INPUT_PULLUP);
 
   pinMode(input1, OUTPUT);
   pinMode(input2, OUTPUT);
@@ -46,31 +46,33 @@ void setup() {
   digitalWrite(input1, HIGH);
   digitalWrite(input2, LOW);
   attachInterrupt(digitalPinToInterrupt(encA), pulses, RISING);
+  attachInterrupt(digitalPinToInterrupt(encB), pulses2, FALLING);
   
 }
 
  
 void loop() {
-  currMillis = millis();
-  if (currMillis - prevMillis >= timeInterval) {
-    currRPM = (pulseCount *60*(1000/timeInterval))/(ppr);
-    
-    Serial.print(" Speed: ");
-    Serial.print(currRPM);
-    Serial.println(" RPM");
-
-    error = targRPM - currRPM;
-    cummError += error; 
-    pid = kp*error + ki*cummError + kd*(error-prevError);
-    pid = constrain((pid/850)*255, 0, 255);
-    //850 is the maximum of RPM when applying supply voltage 12V to the motor.
-    analogWrite(control, pid);
-    digitalWrite(input1, HIGH);
-    digitalWrite(input2, LOW);
-    pulseCount = 0;
-    prevError = error;
-    prevMillis = currMillis;
-  }
+  Serial.println(pulseCount);
+//  currMillis = millis();
+//  if (currMillis - prevMillis >= timeInterval) {
+//    currRPM = (pulseCount *60*(1000/timeInterval))/(ppr);
+//    
+//    Serial.print(" Speed: ");
+//    Serial.print(currRPM);
+//    Serial.println(" RPM");
+//
+//    error = targRPM - currRPM;
+//    cummError += error; 
+//    pid = kp*error + ki*cummError + kd*(error-prevError);
+//    pid = constrain((pid/850)*255, 0, 255);
+//    //850 is the maximum of RPM when applying supply voltage 12V to the motor.
+//    analogWrite(control, pid);
+//    digitalWrite(input1, HIGH);
+//    digitalWrite(input2, LOW);
+//    pulseCount = 0;
+//    prevError = error;
+//    prevMillis = currMillis;
+//  }
 
 }
 
@@ -78,4 +80,7 @@ void loop() {
 // Increment the number of pulses by 1 
 void pulses() {
   pulseCount++;
+}
+void pulses2() {
+  pulseCount--;
 }

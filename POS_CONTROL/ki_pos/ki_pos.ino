@@ -7,8 +7,13 @@
 unsigned int PPR = 0; //PPR for each motor is different
 
 unsigned int reqAngle = 90;
-unsigned float setupPPR = req*PPR/360;
+float setupPPR = reqAngle*PPR/360;
 volatile long currPulse = 0; 
+volatile bool fired;
+volatile bool up;
+
+//to make the encoder remember its position, we could use EEPROM to embedded the current value of encoder to the MCU and when we restart, 
+// we can write a code to call the store value and assigned it equals to currPulse
 
 float Vmax = 12;
 float Vmin = -12;
@@ -26,16 +31,13 @@ unsigned int prevTime = 0;
 unsigned int currTime; 
 
 void setup() {
-  // 
   Serial.begin(9600);
-  // pinMode(ENCA, INPUT);
-  // pinMode(ENCB, INPUT);
   pinMode(ENCA, INPUT_PULLUP);
   pinMode(ENCB, INPUT_PULLUP);
   // If motor turns clockwise(?), currPulse will increase.
-  attachInterrupt(digitalPinToInterrupt(ENCA), proPulses, RISING);
-  // If motor turns anticlockwise(?), currPulse will decrease.
-  attachInterrupt(digitalPinToInterrupt(ENCB), antiPulses, RISING);
+  attachInterrupt(digitalPinToInterrupt(ENCA), isr, CHANGE);
+  // //If motor turns anticlockwise(?), currPulse will decrease.
+  // attachInterrupt(digitalPinToInterrupt(ENCB), antiPulses, RISING);
   
   pinMode(PWM, OUTPUT);
   pinMode(IN1, OUTPUT);
@@ -45,10 +47,14 @@ void setup() {
 
 void loop() {
   currTime = millis();
-  V = pidCal(); 
-  WriteDriverVoltage(V);
+  // V = pidCal(); 
+  Serial.println(currPulse);
+  // WriteDriverVoltage(V);
+  rotateCount();
   delay(10);
 }
+
+
 
 void WriteDriverVoltage(float V) {
   int PWMval = int(255 * abs(V) / Vmax);
@@ -67,7 +73,7 @@ void WriteDriverVoltage(float V) {
     digitalWrite(IN2, LOW);
     digitalWrite(IN1, LOW);
   }
-  analogWrite(/*drive Pin here*/, PWMval);
+//  analogWrite(/*drive Pin here*/, PWMval);/
 }
 
 float pidCal(){
@@ -77,7 +83,7 @@ float pidCal(){
   unsigned int dt = currTime - prevTime;
   currInte = prevInte + (dt * (currError + prevError))/2;
 
-  float p = kp * error;
+  float p = kp * currError;
   float i = ki * currInte;
   float d = kd * (currError - prevError)/dt;
 
@@ -93,7 +99,7 @@ float pidCal(){
   prevError = currError;
   prevTime = currTime; 
   prevInte = currInte;
-  return V 
+  return V ;
 }
 
 void proPulses() {
@@ -115,4 +121,29 @@ void antiPulses(){
   //   currPulse = 360
   // }
   currPulse--;
+}
+
+// Interrupt Service Routine for a change to encoder pin A
+void isr ()
+{
+  if (digitalRead (ENCA))
+    up = digitalRead (ENCB);
+  else
+    up = !digitalRead (ENCB);
+  fired = true;
+}  // end of isr
+
+void rotateCount(){
+  if (fired)
+    {
+    if (up)
+      currPulse++;
+    else
+      currPulse--;
+    fired = false;
+
+    Serial.print ("Count = ");  
+    Serial.println (currPulse);
+    }  // end if fired
+
 }
