@@ -1,111 +1,78 @@
-#include <util/atomic.h> // For the ATOMIC_BLOCK macro
+#include <Arduino.h>
 
-#define ENCA 2 // YELLOW
-#define ENCB 3 // WHITE
-#define PWM 5
-#define IN2 6
-#define IN1 7
+// Declare prereqs.
+const int bitResolution = 12;
+int bitRange = 4096;
+double timeTook, readAngle, error, errorLast;
+double cumError, rateError;
+double targetAngle = 90;
+const int freq = 100;
 
-volatile int posi = 0; 
-long prevT = 0;
-float eprev = 0;
-float eintegral = 0;
+const double Kp = 25;
+const double Ki = 0.0001;
+const double Kd = 10;
+
+const int CHANNEL1 = 0;
+const int angleReadPin = 34;
+
+// L298N Motor A pins
+const int enA = 18;
+const int in1 = 19;
+const int in2 = 21;
+
+double Pterm, Iterm, Dterm, PID;
+double currentTime, previousTime;
 
 void setup() {
+
+  ledcSetup(CHANNEL1, freq, bitResolution);
+  ledcAttachPin(enA, CHANNEL1);
+
+  pinMode(in1, OUTPUT);
+  pinMode(in2, OUTPUT);
+
   Serial.begin(9600);
-  pinMode(ENCA,INPUT);
-  pinMode(ENCB,INPUT);
-  attachInterrupt(digitalPinToInterrupt(ENCA),readEncoder,RISING);
-  
-  pinMode(PWM,OUTPUT);
-  pinMode(IN1,OUTPUT);
-  pinMode(IN2,OUTPUT);
-  
-  Serial.println("target pos");
+
 }
 
 void loop() {
+  int rawAngle = analogRead(angleReadPin);
+  readAngle = (360 * rawAngle) / (bitRange - 1);
+  if (readAngle==360){readAngle=0;}
+  currentTime = millis();
+  timeTook = currentTime - previousTime;
 
-  // set target position
-  //int target = 600;
-  int target = 300*sin(prevT/1e6);
+  error = (targetAngle - readAngle);
+  cumError += (error) * timeTook;
+  rateError = (error - errorLast) / timeTook;
 
-  // PID constants
-  float kp = 2;
-  float kd = 0.025;
-  float ki = 0.1;
+  PID = (Kp * error) + (Ki * cumError) + Kd * rateError;
+  PID = abs(PID);
 
-  // time difference
-  long currT = micros();
-  float deltaT = ((float) (currT - prevT))/( 1.0e6 );
-  prevT = currT;
-
-  // Read the position in an atomic block to avoid a potential
-  // misread if the interrupt coincides with this code running
-  int pos = 0; 
-  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-    pos = posi;
-  }
-  
-  // error
-  int e = pos - target;
-
-  // derivative
-  float dedt = (e-eprev)/(deltaT);
-
-  // integral
-  eintegral = eintegral + e*deltaT;
-
-  // control signal
-  float u = kp*e + kd*dedt + ki*eintegral;
-
-  // motor power
-  float pwr = fabs(u);
-  if( pwr > 255 ){
-    pwr = 255;
+  if (PID > 4096) {
+    PID = 4095;
   }
 
-  // motor direction
-  int dir = 1;
-  if(u<0){
-    dir = -1;
-  }
+  if (error > 0) {
+    digitalWrite(in1, HIGH);
+    digitalWrite(in2, LOW);
+    ledcWrite(CHANNEL1, PID);
+  } else if (error < 0) {
+    digitalWrite(in1, LOW);
+    digitalWrite(in2, HIGH);
+    ledcWrite(CHANNEL1, PID);
+  } else if (error==0) {
+    digitalWrite(in1, LOW);
+    digitalWrite(in2, LOW);
+  } 
 
-  // signal the motor
-  setMotor(dir,pwr,PWM,IN1,IN2);
+  previousTime = currentTime;
+  errorLast = error;
 
+  //Serial.print("Angle: ");
+  Serial.println(readAngle);
+  // Serial.print("Error: ");
+  //Serial.println(targetAngle);
+  delay(10);
 
-  // store previous error
-  eprev = e;
-
-  Serial.print(target);
-  Serial.print(" ");
-  Serial.print(pos);
-  Serial.println();
-}
-
-void setMotor(int dir, int pwmVal, int pwm, int in1, int in2){
-  analogWrite(pwm,pwmVal);
-  if(dir == 1){
-    digitalWrite(in1,HIGH);
-    digitalWrite(in2,LOW);
-  }
-  else if(dir == -1){
-    digitalWrite(in1,LOW);
-    digitalWrite(in2,HIGH);
-  }
-  else{
-    digitalWrite(in1,LOW);
-    digitalWrite(in2,LOW);
-  }  
-}
-
-void readEncoder(){
-  int b = digitalRead(ENCB);
-  if(b > 0){
-    posi++;
-  }
-  else{
-    posi--;
-  }
 }
