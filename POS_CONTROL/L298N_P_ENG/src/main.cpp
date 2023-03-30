@@ -5,12 +5,12 @@ const int bitResolution = 12;
 int bitRange = 4096;
 double timeTook, readAngle, error, errorLast;
 double cumError, rateError;
-double targetAngle = 90;
+double targetAngle = 305;
 const int freq = 100;
 
-const double Kp = 25;
-const double Ki = 0.0001;
-const double Kd = 10;
+const double Kp = 15;
+const double Ki = 0.001;
+const double Kd = 1;
 
 const int CHANNEL1 = 0;
 const int angleReadPin = 34;
@@ -38,11 +38,25 @@ void setup() {
 void loop() {
   int rawAngle = analogRead(angleReadPin);
   readAngle = (360 * rawAngle) / (bitRange - 1);
-  if (readAngle==360){readAngle=0;}
+
   currentTime = millis();
   timeTook = currentTime - previousTime;
 
-  error = (readAngle - targetAngle);
+  double clockwise_distance = targetAngle - readAngle;
+  if (clockwise_distance < 0) {
+    clockwise_distance += 360;
+  }
+  double counter_clockwise_distance = readAngle - targetAngle;
+  if (counter_clockwise_distance < 0) {
+    counter_clockwise_distance += 360;
+  }
+  
+  if (clockwise_distance < counter_clockwise_distance) {
+    error = clockwise_distance;
+  } else {
+    error = -counter_clockwise_distance;
+  }
+
   cumError += (error) * timeTook;
   rateError = (error - errorLast) / timeTook;
 
@@ -61,18 +75,17 @@ void loop() {
     digitalWrite(in1, LOW);
     digitalWrite(in2, HIGH);
     ledcWrite(CHANNEL1, PID);
-  } else if (error==0) {
+  } else if (error == 0) {
     digitalWrite(in1, LOW);
     digitalWrite(in2, LOW);
-  } 
+  }
 
   previousTime = currentTime;
   errorLast = error;
 
   Serial.print("Angle: ");
-  Serial.println(readAngle);
-  // Serial.print("Error: ");
-  //Serial.println(targetAngle);
+  Serial.print(readAngle);
+  Serial.print("  Error: ");
+  Serial.println(error);
   delay(10);
-
 }
